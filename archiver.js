@@ -1,124 +1,169 @@
-// Huffman Encoding
-function buildFrequencyTable(text) {
-    const frequencyTable = {};
-    for (let i = 0; i < text.length; i++) {
-        const char = text[i];
-        if (char in frequencyTable) {
-            frequencyTable[char]++;
+const fs = require('fs');
+// Определение исходного файла, с которым программа будет работать
+const filename = 'file.txt';
+
+// Запуск программы
+archiveFile(filename);
+
+// Класс для хранения узлов древа
+class Node {
+    constructor(character, priority) {
+        this.character = character;
+        this.priority = priority;
+        this.left = null;
+        this.right = null;
+    }
+}
+
+// Функция для сохранения архивированных
+// и разархивированных данных в текстовый файл
+function makeFile(name, content){
+    fs.writeFile(name, content, (err) => {
+        if (err){
+            console.error(err);
+            return;
+        }
+        console.log(`Файл ${name} был успешно создан.`);
+    });
+}
+
+// Функция для определения прироитетов у символов
+// Возвращает словарь-таблицу прироритетов
+function getPriorities(data) {
+    const priorityTable = {};
+    
+    for (let i = 0; i < data.length; i++) {
+        const char = data[i];
+
+        if (char in priorityTable) {
+            priorityTable[char]++;
         } else {
-            frequencyTable[char] = 1;
+            priorityTable[char] = 1;
         }
     }
-    return frequencyTable;
+    
+    return priorityTable;
 }
 
-function buildHuffmanTree(frequencyTable) {
-    const nodes = Object.keys(frequencyTable).map((char) => ({
-        character: char,
-        frequency: frequencyTable[char],
-        left: null,
-        right: null,
-    }));
-    if (nodes.length === 0) {
-        return null;
-    }
-    while (nodes.length > 1) {
-        nodes.sort((a, b) => {
-            if (a.character === null && b.character === null) {
-                return 0;
-            } else if (a.character === null) {
-                return -1;
-            } else if (b.character === null) {
-                return 1;
-            } else {
-                return a.frequency - b.frequency || a.character === b.character ? 0 : a.character.localeCompare(b.character);
-            }
-        });
-        // Define newNode
-        const newNode = {
-            character: null,
-            frequency: nodes[nodes.length - 2].frequency + nodes[nodes.length - 1].frequency,
-            left: nodes.pop(),
-            right: nodes.pop(),
-        };
-        nodes.push(newNode);
-    }
-    return nodes[0];
+// Функция на сохранение данных древа в файл
+function saveHuffmanTree(tree, filename) {
+    const treeData = JSON.stringify(tree);
+    
+    fs.writeFileSync(filename, treeData);
+    console.log(`Древо было успешно сохранено в файл ${filename}`);
 }
 
 
-// Build Huffman Codes
-function buildHuffmanCodes(huffmanTree) {
-    const huffmanCodes = {};
-    if (huffmanTree === null) {
-        return huffmanCodes;
+// Функция для построение древа
+// Возращает объект класса Node
+function makeHuffmanTree(frequencies) {
+    const priorityQueue = Object.keys(frequencies).map(
+        (character) => new Node(character, frequencies[character]));
+    
+    while (priorityQueue.length > 1) {
+        priorityQueue.sort((a, b) => a.priority - b.priority);
+
+        const left = priorityQueue.shift();
+        const right = priorityQueue.shift();
+        const mergedNode = new Node(null, left.priority + right.priority);
+
+        mergedNode.left = left;
+        mergedNode.right = right;
+
+        priorityQueue.push(mergedNode);
     }
-    function traverseTree(node, code) {
-        if (node.character !== null) {
-            huffmanCodes[node.character] = code;
-        } else {
-            traverseTree(node.left, code + '0');
-            traverseTree(node.right, code + '1');
+    
+    // Сохранение древа в отдельный текстовый файл для
+    // последующей разархивации закодированного файла
+    saveHuffmanTree(priorityQueue[0], 'huffman_tree.txt');
+
+    return priorityQueue[0];
+}
+
+// Функция, использующаяся при архивации данных, 
+// для определения бинарных кодов у каждого символа
+function getCode(node, character, code = '') {
+    if (node.character === character) {
+        return code;
+    }
+    if (node.left) {
+        const leftCode = getCode(node.left, character, code + '0');
+        if (leftCode) {
+            return leftCode;
         }
     }
-    traverseTree(huffmanTree, '');
-    return huffmanCodes;
-}
-
-function encodeFile(text, huffmanCodes) {
-    let encodedText = "";
-    for (let i = 0; i < text.length; i++) {
-        const char = text[i];
-        encodedText += huffmanCodes[char];
+    if (node.right) {
+        const rightCode = getCode(node.right, character, code + '1');
+        if (rightCode) {
+            return rightCode;
+        }
     }
-    return encodedText;
+
+    return '';
 }
 
-function isLeaf(node) {
-    return !node.left && !node.right;
+// Функция архивации, результат представляет из себя
+// строку с бинарным кодом
+function encodeFile(data, tree, filename) {
+    const encodedData = data.split('').map(
+        (character) => getCode(tree, character)).join('');
+    
+    makeFile(filename, encodedData)
 }
 
-function decodeFile(encodedText, huffmanTree) {
-    let decodedText = "";
-    let currentNode = huffmanTree;
-    for (let i = 0; i < encodedText.length; i++) {
-        const bit = encodedText[i];
-        if (bit === "0") {
+// Функция разархивации, результат должен
+// быть идентичен исходному файлу до архивации
+function decodeFile(data, tree, filename) {
+    const encodedData = data;
+    const decodedData = [];
+    
+    let currentNode = tree;
+    for (let i = 0; i < encodedData.length; i++) {
+        if (encodedData[i] === '0') {
             currentNode = currentNode.left;
         } else {
             currentNode = currentNode.right;
         }
-        if (isLeaf(currentNode)) {
-            decodedText += currentNode.character;
-            currentNode = huffmanTree;
+        if (!currentNode.left && !currentNode.right) {
+            decodedData.push(currentNode.character);
+            currentNode = tree;
         }
     }
-    return decodedText;
+    
+    makeFile(filename, decodedData.join(''));
 }
 
-const fs = require("fs");
-fs.readFile('file.txt', 'utf8', (err, filename) => {
-    if (err) {
-        console.error(err);
-        return;
-    }
-    const frequencyTable = buildFrequencyTable(filename);
-    const huffmanTree = buildHuffmanTree(frequencyTable);
-    const huffmanCodes = buildHuffmanCodes(huffmanTree);
-    const encodedText = encodeFile(filename, huffmanCodes);
-    fs.writeFile("encoded.txt", encodedText, (err) => {
+// Основная программа, умещенная в одну функцию
+function archiveFile(filename){
+    // Чтение исходного файла
+    fs.readFile(filename, 'utf8', (err, content) => {
         if (err) {
             console.error(err);
             return;
         }
-        console.log("File has been encoded and saved as encoded.txt");
+        
+        // Получаем приоритеты
+        const priorities = getPriorities(content);
+        // Создаём древо Хаффмана и сохраняем его в отдельный файл
+        const huffmanTree = makeHuffmanTree(priorities);
+
+        // Архивируем файл с помощью древа, результат
+        // сохраняем в encoded.txt
+        encodeFile(content, huffmanTree, 'encoded.txt');
+        
+        // Чтение файла encoded.txt
+        fs.readFile('encoded.txt', 'utf8', (err, data) => {
+            if (err) {
+                console.error(err);
+                return;
+            }
+            
+            // Загружаем древо Хаффмана из файла huffman_tree.txt
+            tree = JSON.parse(fs.readFileSync('huffman_tree.txt', 'utf8'));
+
+            // Разархивируем encoded.txt и выгружаем результат
+            // в decocded.txt
+            decodeFile(data, tree, 'decoded.txt');
+        });
     });
-    const decodedText = decodeFile(encodedText, huffmanTree);
-    fs.writeFile("decoded.txt", decodedText, (err) => {
-        if (err) {
-            console.error(err);
-            return;
-        }
-        console.log("File has been decoded and saved as decoded.txt");
-    })
-});
+}
