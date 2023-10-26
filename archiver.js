@@ -1,9 +1,9 @@
 const fs = require('fs');
 // Определение исходного файла, с которым программа будет работать
-const filename = 'file.txt';
+const dataFile = 'data.txt';
 
 // Запуск программы
-archiveFile(filename);
+startProgramm(dataFile);
 
 // Класс для хранения узлов древа
 class Node {
@@ -104,37 +104,37 @@ function getCode(node, character, code = '') {
 
 // Функция архивации, результат представляет из себя
 // строку с бинарным кодом
-function encodeFile(data, tree, filename) {
-    const encodedData = data.split('').map(
+function archiveFile(data, tree, filename) {
+    const archivedData = data.split('').map(
         (character) => getCode(tree, character)).join('');
     
-    makeFile(filename, encodedData)
+    makeFile(filename, archivedData)
 }
 
 // Функция разархивации, результат должен
 // быть идентичен исходному файлу до архивации
-function decodeFile(data, tree, filename) {
-    const encodedData = data;
-    const decodedData = [];
+function unarchiveFile(data, tree, filename) {
+    const archivedData = data;
+    const unarchivedData = [];
     
     let currentNode = tree;
-    for (let i = 0; i < encodedData.length; i++) {
-        if (encodedData[i] === '0') {
+    for (let i = 0; i < archivedData.length; i++) {
+        if (archivedData[i] === '0') {
             currentNode = currentNode.left;
         } else {
             currentNode = currentNode.right;
         }
         if (!currentNode.left && !currentNode.right) {
-            decodedData.push(currentNode.character);
+            unarchivedData.push(currentNode.character);
             currentNode = tree;
         }
     }
     
-    makeFile(filename, decodedData.join(''));
+    makeFile(filename, unarchivedData.join(''));
 }
 
 // Основная программа, умещенная в одну функцию
-function archiveFile(filename){
+function startProgramm(filename){
     // Чтение исходного файла
     fs.readFile(filename, 'utf8', (err, content) => {
         if (err) {
@@ -148,11 +148,11 @@ function archiveFile(filename){
         const huffmanTree = makeHuffmanTree(priorities);
 
         // Архивируем файл с помощью древа, результат
-        // сохраняем в encoded.txt
-        encodeFile(content, huffmanTree, 'encoded.txt');
+        // сохраняем в archived.txt
+        archiveFile(content, huffmanTree, 'archived.txt');
         
-        // Чтение файла encoded.txt
-        fs.readFile('encoded.txt', 'utf8', (err, data) => {
+        // Чтение файла archived.txt
+        fs.readFile('archived.txt', 'utf8', (err, data) => {
             if (err) {
                 console.error(err);
                 return;
@@ -161,9 +161,9 @@ function archiveFile(filename){
             // Загружаем древо Хаффмана из файла huffman_tree.txt
             tree = JSON.parse(fs.readFileSync('huffman_tree.txt', 'utf8'));
 
-            // Разархивируем encoded.txt и выгружаем результат
+            // Разархивируем archived.txt и выгружаем результат
             // в decocded.txt
-            decodeFile(data, tree, 'decoded.txt');
+            unarchiveFile(data, tree, 'unarchive.txt');
         });
     });
 }
