@@ -162,8 +162,8 @@ function startProgramm(filename){
             tree = JSON.parse(fs.readFileSync('huffman_tree.txt', 'utf8'));
 
             // Разархивируем archived.txt и выгружаем результат
-            // в decocded.txt
-            unarchiveFile(data, tree, 'unarchive.txt');
+            // в unarchived.txt
+            unarchiveFile(data, tree, 'unarchived.txt');
         });
     });
 }
